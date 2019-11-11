@@ -19,6 +19,7 @@ import java.sql.SQLException;
 import java.sql.DriverManager;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * @ClassName Main
@@ -63,7 +64,7 @@ public class Main {
             if (isInterestingLink(link)) {
                 Document doc = httpGetAndParseHtml(link);
                 parseUrlsFromPageAndStoreIntoDatabase(connection, doc);
-                storeIntoDatabaseIfItIsNewsPagr(doc);
+                storeIntoDatabaseIfItIsNewsPagr(connection, doc, link);
                 updateDatabase(connection, link, "insert into LINKS_ALREADY_PROCESSED (link) values (?)");
 
             } else {
@@ -86,7 +87,19 @@ public class Main {
     private static void parseUrlsFromPageAndStoreIntoDatabase(Connection connection, Document doc) throws SQLException {
         for (Element aTag : doc.select("a")) {
             String href = aTag.attr("href");
-            updateDatabase(connection, href, "insert into LINKS_TO_BE_PROCESSED (link) values (?)");
+            if (href.startsWith("//")) {
+                href = "https:" + href;
+            }
+            if (href.equals("#")) {
+                continue;
+            }
+            if (href.trim().equals("")) {
+                continue;
+            }
+            if (!href.toLowerCase().startsWith("javascript")) {
+                System.out.println("href = " + href);
+                updateDatabase(connection, href, "insert into LINKS_TO_BE_PROCESSED (link) values (?)");
+            }
         }
     }
 
@@ -116,12 +129,24 @@ public class Main {
 
 
     // 假如这是一个新闻得详情页面，就存入数据库，否则，就什么都不做
-    private static void storeIntoDatabaseIfItIsNewsPagr(Document doc) {
+    private static void storeIntoDatabaseIfItIsNewsPagr(Connection connection, Document doc, String link) {
         ArrayList<Element> articleTags = doc.select("article");
         if (!articleTags.isEmpty()) {
             for (Element articleTag : articleTags) {
                 String title = articleTag.child(0).text();
                 System.out.println("title = " + title);
+
+                ArrayList<Element> paragraphs = articleTag.select("p");
+                String content = paragraphs.stream().map(Element::text).collect(Collectors.joining());
+
+                try (PreparedStatement statement = connection.prepareStatement("insert into news(url,TITLE,CONTENT,CREATED_AT,MODIFIED_AT) values ( ?,?,?,now(),now())")){
+                    statement.setString(1,link);
+                    statement.setString(2,title);
+                    statement.setString(3,content);
+                    statement.executeUpdate();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
@@ -129,9 +154,6 @@ public class Main {
     private static Document httpGetAndParseHtml(String link) {
         // 这是需要处理得数据
         CloseableHttpClient httpclient = HttpClients.createDefault();
-        if (link.startsWith("//")) {
-            link = "https:" + link;
-        }
         HttpGet httpGet = new HttpGet(link);
         httpGet.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.120 Safari/537.36");
         CloseableHttpResponse response1 = null;
