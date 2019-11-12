@@ -16,6 +16,16 @@ public class News {
 
     private String title;
 
+
+    public News(String url, String content, String title) {
+        this.url = url;
+        this.content = content;
+        this.title = title;
+    }
+
+    public News() {
+    }
+
     public Integer getId() {
         return id;
     }
