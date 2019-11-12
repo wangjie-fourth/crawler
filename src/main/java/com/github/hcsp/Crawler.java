@@ -2,6 +2,7 @@ package com.github.hcsp;
 
 import com.github.hcsp.dao.CrawlerDao;
 import com.github.hcsp.dao.impl.JdbcCrawlerDao;
+import com.github.hcsp.dao.impl.MybatisCrawlerDao;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -26,7 +27,7 @@ import java.util.stream.Collectors;
  **/
 public class Crawler {
 
-    private static CrawlerDao dao = new JdbcCrawlerDao();
+    private static CrawlerDao dao = new MybatisCrawlerDao();
 
     public static void main(String[] args) throws IOException, SQLException {
         new Crawler().run();
@@ -77,7 +78,7 @@ public class Crawler {
                 ArrayList<Element> paragraphs = articleTag.select("p");
                 String content = paragraphs.stream().map(Element::text).collect(Collectors.joining());
 
-                dao.insertNewsIntoDatabase( link, title, content);
+                dao.insertNewsIntoDatabase(link, title, content);
             }
         }
     }
@@ -94,8 +95,8 @@ public class Crawler {
                 Document doc = httpGetAndParseHtml(link);
                 parseUrlsFromPageAndStoreIntoDatabase(doc);
                 storeIntoDatabaseIfItIsNewsPagr(doc, link);
-                dao.updateDatabase(link, "insert into LINKS_ALREADY_PROCESSED (link) values (?)");
 
+                dao.insertProcessedLink(link);
             }
         }
 
@@ -113,9 +114,12 @@ public class Crawler {
             if (href.trim().equals("")) {
                 continue;
             }
+            if (href.contains("\\/")){// 对url中【\/】进行处理
+                href = href.replace("\\/", "/");
+            }
             if (!href.toLowerCase().startsWith("javascript")) {
                 System.out.println("href = " + href);
-                dao.updateDatabase( href, "insert into LINKS_TO_BE_PROCESSED (link) values (?)");
+                dao.insertLinkToBeProcessed(href);
             }
         }
     }
