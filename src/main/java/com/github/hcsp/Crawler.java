@@ -25,12 +25,12 @@ import java.util.stream.Collectors;
  * @Date 2019/10/19 22:50
  * @Email jie.wang13@hand-china.com
  **/
-public class Crawler {
+public class Crawler extends Thread {
 
-    private static CrawlerDao dao = new MybatisCrawlerDao();
+    private CrawlerDao dao;
 
-    public static void main(String[] args) throws IOException, SQLException {
-        new Crawler().run();
+    public Crawler(CrawlerDao dao) {
+        this.dao = dao;
     }
 
     private static Document httpGetAndParseHtml(String link) {
@@ -68,7 +68,7 @@ public class Crawler {
     }
 
     // 假如这是一个新闻得详情页面，就存入数据库，否则，就什么都不做
-    private static void storeIntoDatabaseIfItIsNewsPagr(Document doc, String link) {
+    private void storeIntoDatabaseIfItIsNewsPagr(Document doc, String link) {
         ArrayList<Element> articleTags = doc.select("article");
         if (!articleTags.isEmpty()) {
             for (Element articleTag : articleTags) {
@@ -83,21 +83,26 @@ public class Crawler {
         }
     }
 
-    public void run() throws SQLException {
-        String link;
-        // 从数据库拿出一个链接，然后删除它，再处理这个链接
-        while ((link = dao.getNextLinkThenDelete()) != null) {
-            // 询问数据库，当前链接是不是已经被处理过了
-            if (dao.isLinkProcessed(link)) {
-                continue;
-            }
-            if (isInterestingLink(link)) {
-                Document doc = httpGetAndParseHtml(link);
-                parseUrlsFromPageAndStoreIntoDatabase(doc);
-                storeIntoDatabaseIfItIsNewsPagr(doc, link);
+    @Override
+    public void run() {
+        try {
+            String link;
+            // 从数据库拿出一个链接，然后删除它，再处理这个链接
+            while ((link = dao.getNextLinkThenDelete()) != null) {
+                // 询问数据库，当前链接是不是已经被处理过了
+                if (dao.isLinkProcessed(link)) {
+                    continue;
+                }
+                if (isInterestingLink(link)) {
+                    Document doc = httpGetAndParseHtml(link);
+                    parseUrlsFromPageAndStoreIntoDatabase(doc);
+                    storeIntoDatabaseIfItIsNewsPagr(doc, link);
 
-                dao.insertProcessedLink(link);
+                    dao.insertProcessedLink(link);
+                }
             }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
 
     }
@@ -114,7 +119,7 @@ public class Crawler {
             if (href.trim().equals("")) {
                 continue;
             }
-            if (href.contains("\\/")){// 对url中【\/】进行处理
+            if (href.contains("\\/")) {// 对url中【\/】进行处理
                 href = href.replace("\\/", "/");
             }
             if (!href.toLowerCase().startsWith("javascript")) {
