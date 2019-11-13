@@ -29,11 +29,11 @@
     <insert id="insertLink" parameterType="HashMap">
         insert into
         <choose>
-            <when test="tableName == links_already_processed">
-                links_already_processed (link)
+            <when test="tableName == 'links_already_processed'">
+                LINKS_ALREADY_PROCESSED (link)
             </when>
             <otherwise>
-                links_to_be_processed (link)
+                LINKS_TO_BE_PROCESSED (link)
             </otherwise>
         </choose>
         values (#{link})
