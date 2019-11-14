@@ -14,7 +14,7 @@ public class Main {
     public static void main(String[] args) {
         CrawlerDao dao = new MybatisCrawlerDao();
 
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 4; i++) {
             // 由于数据库是一个天然的同步，所以这里不用考虑锁的问题
             new Crawler(dao).start();
         }
