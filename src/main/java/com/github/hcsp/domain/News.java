@@ -1,5 +1,7 @@
 package com.github.hcsp.domain;
 
+import java.time.Instant;
+
 /**
  * @ClassName News
  * @Description
@@ -16,6 +18,25 @@ public class News {
 
     private String title;
 
+    private Instant createdAt;
+
+    private Instant modifiedAt;
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Instant getModifiedAt() {
+        return modifiedAt;
+    }
+
+    public void setModifiedAt(Instant modifiedAt) {
+        this.modifiedAt = modifiedAt;
+    }
 
     public News(String url, String content, String title) {
         this.url = url;
